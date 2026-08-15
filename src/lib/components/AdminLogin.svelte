@@ -30,7 +30,7 @@
 	}
 </script>
 
-<div class="fixed bottom-3 left-1/2 z-[600] -translate-x-1/2">
+<div class="fixed top-14 right-3 z-[600]">
 	{#if authState.user}
 		<div
 			class="flex items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur"
