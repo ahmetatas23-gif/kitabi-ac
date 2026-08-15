@@ -232,21 +232,25 @@
 					>
 						✕
 					</button>
+					<!-- Ayarlar (punto/renk) — silme (✕) butonuyla birebir aynı davranış: imleç
+					     üzerine gelmeden tamamen görünmez (opacity-0), sadece bu öğenin üzerine
+					     gelince (group-hover) belirir. Önceden sürekli hafif görünür (opacity-60)
+					     kalıyordu ve ekranda dikkat dağıtıyordu. -->
+					<button
+						type="button"
+						title="Ayarlar (punto/renk) — yalnızca yönetici"
+						onpointerdown={(e) => e.stopPropagation()}
+						onclick={(e) => {
+							e.stopPropagation();
+							settingsFor = settingsFor === a.id ? null : a.id;
+						}}
+						style="position:absolute; left:100%; top:0; margin-left:4px; z-index:25; pointer-events:auto;"
+						class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] text-white opacity-0 shadow group-hover:opacity-100 hover:bg-slate-700"
+					>
+						⚙
+					</button>
 				{/if}
 			</div>
-			{#if teacherStore.canManage}
-				<button
-					type="button"
-					title="Ayarlar (punto/renk) — yalnızca yönetici"
-					onclick={() => (settingsFor = settingsFor === a.id ? null : a.id)}
-					style="position:absolute; left:{a.rect.origin.x * scale + a.rect.size.width * scale + 4}px; top:{a
-						.rect.origin.y *
-						scale}px; z-index:25; pointer-events:auto;"
-					class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] text-white opacity-60 shadow hover:bg-slate-700 hover:opacity-100"
-				>
-					⚙
-				</button>
-			{/if}
 		{:else if a.kind === 'gizli-alan' && teacherStore.teacherMode}
 			<!-- Alan gösterilmiş: şeffaf, sadece hover'da hafif belirti + sil butonu -->
 			<div
