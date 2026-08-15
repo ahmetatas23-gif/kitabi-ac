@@ -67,12 +67,25 @@
 	const DOCKED_KEY = 'zbook:toolbar-docked';
 	const SIDE_KEY = 'zbook:toolbar-side';
 	const DOCK_SNAP_DISTANCE = 80; // px — kenara bu kadar yaklaşınca yapışır
+	const approxWidth = 44; // toolbar'ın kabaca genişliği — sağ kenar hesabı için (clampPos'tan önce tanımlı olmalı)
 
+	// Ekran dışına taşmış bir konumu (örn. önceki bir sürüklemede üstten/kenardan
+	// çıkmış, ya da farklı/daha küçük bir ekranda kaydedilmiş) görünür alana geri çeker.
+	function clampPos(p: { x: number; y: number }) {
+		if (typeof window === 'undefined') return p;
+		const margin = 4;
+		const maxX = Math.max(margin, window.innerWidth - approxWidth - margin);
+		const maxY = Math.max(margin, window.innerHeight - approxWidth - margin);
+		return {
+			x: Math.min(Math.max(p.x, margin), maxX),
+			y: Math.min(Math.max(p.y, margin), maxY)
+		};
+	}
 	function loadPos() {
 		if (typeof localStorage === 'undefined') return { x: 16, y: 96 };
 		try {
 			const raw = localStorage.getItem(POS_KEY);
-			return raw ? JSON.parse(raw) : { x: 16, y: 96 };
+			return raw ? clampPos(JSON.parse(raw)) : { x: 16, y: 96 };
 		} catch {
 			return { x: 16, y: 96 };
 		}
@@ -97,7 +110,6 @@
 	toolbarState.side = loadSide();
 	let dragging = $state(false);
 	let dragOffset = { x: 0, y: 0 };
-	let approxWidth = 44; // toolbar'ın kabaca genişliği — sağ kenar hesabı için
 
 	function startDrag(e: PointerEvent) {
 		dragging = true;
@@ -113,7 +125,7 @@
 	}
 	function onDrag(e: PointerEvent) {
 		if (!dragging) return;
-		pos = { x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y };
+		pos = clampPos({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
 		const nearLeft = pos.x < DOCK_SNAP_DISTANCE;
 		const nearRight = pos.x + approxWidth > window.innerWidth - DOCK_SNAP_DISTANCE;
 		toolbarState.docked = nearLeft || nearRight;
