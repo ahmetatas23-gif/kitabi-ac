@@ -87,6 +87,7 @@
 		if (!teacherStore.teacherMode) return;
 		e.stopPropagation();
 		if (teacherStore.addMode) return; // Ekleme Modu'nda mevcut öğeler taşınmaz
+		if (!teacherStore.canManage) return; // Taşıma sadece yönetici — editor'lar sadece tıklayarak aç/kapa yapabilir
 		movingId = a.id;
 		moved = false;
 		moveStartClient = { x: e.clientX, y: e.clientY };
@@ -117,8 +118,11 @@
 		moved = false;
 	}
 	function handleItemClick(a: HiddenAnswer) {
-		// addMode'da drag hiç kurulmadığı için normal click üzerinden aç/kapa.
-		if (teacherStore.teacherMode && teacherStore.addMode) teacherStore.toggleHidden(a.id);
+		// addMode'da VEYA yönetici olmayan (editor) kullanıcılarda drag hiç
+		// kurulmadığı için (bkz. startItemDrag) normal click üzerinden aç/kapa.
+		if (teacherStore.teacherMode && (teacherStore.addMode || !teacherStore.canManage)) {
+			teacherStore.toggleHidden(a.id);
+		}
 	}
 
 	// --- Ayar paneli (punto/renk/sil) ---
@@ -182,18 +186,20 @@
 					class="group flex cursor-move items-center justify-center rounded-md hover:bg-red-50/40"
 				>
 					<span class="text-base opacity-70 group-hover:opacity-100">🔒</span>
-					<button
-						type="button"
-						title="Sil"
-						onpointerdown={(e) => e.stopPropagation()}
-						onclick={(e) => {
-							e.stopPropagation();
-							teacherStore.remove(a.id);
-						}}
-						class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow opacity-0 group-hover:opacity-100 hover:bg-red-700"
-					>
-						✕
-					</button>
+					{#if teacherStore.canManage}
+						<button
+							type="button"
+							title="Sil"
+							onpointerdown={(e) => e.stopPropagation()}
+							onclick={(e) => {
+								e.stopPropagation();
+								teacherStore.remove(a.id);
+							}}
+							class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow opacity-0 group-hover:opacity-100 hover:bg-red-700"
+						>
+							✕
+						</button>
+					{/if}
 				</div>
 			{/if}
 		{:else if a.kind === 'gizli-metin'}
@@ -213,7 +219,7 @@
 				>
 					{a.text}
 				</span>
-				{#if teacherStore.teacherMode}
+				{#if teacherStore.canManage}
 					<button
 						type="button"
 						title="Sil"
@@ -228,10 +234,10 @@
 					</button>
 				{/if}
 			</div>
-			{#if teacherStore.teacherMode}
+			{#if teacherStore.canManage}
 				<button
 					type="button"
-					title="Ayarlar (punto/renk)"
+					title="Ayarlar (punto/renk) — yalnızca yönetici"
 					onclick={() => (settingsFor = settingsFor === a.id ? null : a.id)}
 					style="position:absolute; left:{a.rect.origin.x * scale + a.rect.size.width * scale + 4}px; top:{a
 						.rect.origin.y *
@@ -254,18 +260,20 @@
 				title="Sürükleyerek taşı, tıklayarak tekrar gizle"
 				class="group cursor-move rounded-md hover:bg-emerald-50/30"
 			>
-				<button
-					type="button"
-					title="Sil"
-					onpointerdown={(e) => e.stopPropagation()}
-					onclick={(e) => {
-						e.stopPropagation();
-						teacherStore.remove(a.id);
-					}}
-					class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow opacity-0 group-hover:opacity-100 hover:bg-red-700"
-				>
-					✕
-				</button>
+				{#if teacherStore.canManage}
+					<button
+						type="button"
+						title="Sil"
+						onpointerdown={(e) => e.stopPropagation()}
+						onclick={(e) => {
+							e.stopPropagation();
+							teacherStore.remove(a.id);
+						}}
+						class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow opacity-0 group-hover:opacity-100 hover:bg-red-700"
+					>
+						✕
+					</button>
+				{/if}
 			</div>
 		{/if}
 	{/each}

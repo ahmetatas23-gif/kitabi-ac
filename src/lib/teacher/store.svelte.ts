@@ -76,33 +76,41 @@ function answerToRow(a: HiddenAnswer) {
 }
 
 class TeacherStoreSupabase {
-	// 👨‍🏫 Öğretmen Modu — kapalıyken gizli cevaplar için düzenleme arayüzü
-	// hiç render edilmez. Açma/kapama SADECE admin'e (bkz. FloatingToolbar
-	// gate) sunulur; ama gizlenmiş içerik (maskeler/kilitler) her zaman
-	// herkese görünür — öğrenci onların cevap olduğunu bilmez, sadece bir
-	// perde/kilit görür.
+	// 👨‍🏫 Öğretmen Modu — kapalıyken gizli cevaplar için etkileşim arayüzü
+	// hiç render edilmez. Açma/kapama admin VE onaylı editor (öğretmen)
+	// rolündeki herkese açık (bkz. canToggle) — böylece birden fazla
+	// öğretmen kendi dersinde admin'in hazırladığı gizli cevapları
+	// açıp/kapatabilir. Ama içerik oluşturma/silme/taşıma/renk-punto
+	// değiştirme SADECE admin'e açık (bkz. canManage).
 	teacherMode = $state(loadJSON(TEACHER_MODE_KEY, false));
 
 	// ➕ Ekleme Modu — sadece YENİ bir gizli alan/metin çizerken sayfanın
-	// tamamını "yakalar".
+	// tamamını "yakalar". Sadece admin (canManage) kullanabilir.
 	addMode = $state(false);
 
 	answers = $state<HiddenAnswer[]>([]);
 
 	private currentBookId: string | null = null;
-	private saving = $state(false);
 	loadError = $state('');
 
-	/** Sadece admin (Supabase profiles.role === 'admin') düzenleyebilir. */
-	canEdit = $derived(authState.user?.role === 'admin');
+	/** Tam yönetim (ekle/taşı/renk-punto değiştir/sil) — sadece admin. */
+	canManage = $derived(!!authState.user?.approved && authState.user?.role === 'admin');
+
+	/** Göster/Gizle aç-kapa — admin + onaylı editor (öğretmen) rolü. Sunucu
+	 *  tarafında da (RPC: toggle_hidden_answer) aynı kural ayrıca zorlanıyor,
+	 *  bu sadece arayüz için hızlı bir kontrol. */
+	canToggle = $derived(
+		!!authState.user?.approved &&
+			(authState.user?.role === 'admin' || authState.user?.role === 'editor')
+	);
 
 	toggleAddMode() {
-		if (!this.canEdit) return;
+		if (!this.canManage) return;
 		this.addMode = !this.addMode;
 	}
 
 	toggleTeacherMode() {
-		if (!this.canEdit) {
+		if (!this.canToggle) {
 			this.teacherMode = false;
 			return;
 		}
@@ -129,7 +137,7 @@ class TeacherStoreSupabase {
 	}
 
 	async add(answer: HiddenAnswer) {
-		if (!this.canEdit) return;
+		if (!this.canManage) return;
 		// İyimser güncelleme: hemen ekle, hata olursa geri al.
 		this.answers.push(answer);
 		const { error } = await supabase.from('hidden_answers').insert(answerToRow(answer));
@@ -139,16 +147,12 @@ class TeacherStoreSupabase {
 		}
 	}
 
+	/** Tam alan güncelleme (konum taşıma, punto/renk) — SADECE admin. */
 	async update(id: string, patch: Partial<HiddenAnswer>) {
+		if (!this.canManage) return;
 		const idx = this.answers.findIndex((a) => a.id === id);
 		if (idx < 0) return;
 		const prev = this.answers[idx];
-		if (!this.canEdit) {
-			// Öğretmen olmayanlar hiçbir yazma işlemi yapamaz (toggleHidden
-			// dahil — çünkü hidden alanı da sunucuda tutuluyor ve public'e
-			// açık; öğrenci tarafında değişmemesi gerekiyor).
-			return;
-		}
 		this.answers[idx] = { ...prev, ...patch };
 		const { error } = await supabase
 			.from('hidden_answers')
@@ -161,7 +165,7 @@ class TeacherStoreSupabase {
 	}
 
 	async remove(id: string) {
-		if (!this.canEdit) return;
+		if (!this.canManage) return;
 		const prev = this.answers;
 		this.answers = this.answers.filter((a) => a.id !== id);
 		const { error } = await supabase.from('hidden_answers').delete().eq('id', id);
@@ -171,9 +175,26 @@ class TeacherStoreSupabase {
 		}
 	}
 
-	toggleHidden(id: string) {
-		const a = this.answers.find((a) => a.id === id);
-		if (a) this.update(id, { hidden: !a.hidden });
+	/** Göster/Gizle — admin + editor. Dar kapsamlı bir Postgres fonksiyonu
+	 *  (RPC) üzerinden çalışır; bu fonksiyon SADECE default_hidden alanını
+	 *  değiştirir, metni/konumu/rengi değiştiremez veya silemez — böylece
+	 *  bir öğretmen yanlışlıkla ya da kasıtlı olarak admin'in hazırladığı
+	 *  içeriği bozamaz/silemez, sadece açıp kapatabilir. */
+	async toggleHidden(id: string) {
+		if (!this.canToggle) return;
+		const idx = this.answers.findIndex((a) => a.id === id);
+		if (idx < 0) return;
+		const prev = this.answers[idx];
+		const nextHidden = !prev.hidden;
+		this.answers[idx] = { ...prev, hidden: nextHidden };
+		const { error } = await supabase.rpc('toggle_hidden_answer', {
+			p_id: id,
+			p_hidden: nextHidden
+		});
+		if (error) {
+			this.answers[idx] = prev;
+			console.error('Gizli cevap açılıp/kapatılamadı:', error.message);
+		}
 	}
 
 	forPage(bookId: string, pageNumber: number): HiddenAnswer[] {
@@ -181,11 +202,11 @@ class TeacherStoreSupabase {
 	}
 
 	showAllOnPage(bookId: string, pageNumber: number) {
-		for (const a of this.forPage(bookId, pageNumber)) this.update(a.id, { hidden: false });
+		for (const a of this.forPage(bookId, pageNumber)) if (a.hidden) this.toggleHidden(a.id);
 	}
 
 	hideAllOnPage(bookId: string, pageNumber: number) {
-		for (const a of this.forPage(bookId, pageNumber)) this.update(a.id, { hidden: true });
+		for (const a of this.forPage(bookId, pageNumber)) if (!a.hidden) this.toggleHidden(a.id);
 	}
 }
 

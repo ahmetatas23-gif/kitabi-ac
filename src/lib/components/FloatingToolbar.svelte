@@ -226,10 +226,10 @@
 
 	<ZoomMenu {documentId} docked={toolbarState.docked} />
 
-	{#if teacherStore.canEdit}
+	{#if teacherStore.canToggle}
 		<button
 			type="button"
-			title="Öğretmen Modu (gizli cevaplar) — yalnızca yönetici"
+			title="Öğretmen Modu (gizli cevapları göster/gizle)"
 			onclick={() => teacherStore.toggleTeacherMode()}
 			class="flex h-9 w-9 items-center justify-center rounded transition-colors {teacherStore.teacherMode
 				? 'bg-amber-400 text-slate-900'
@@ -240,10 +240,10 @@
 			👨‍🏫
 		</button>
 
-		{#if teacherStore.teacherMode}
+		{#if teacherStore.teacherMode && teacherStore.canManage}
 			<button
 				type="button"
-				title="Yeni Gizli Cevap Ekle (sürükleyerek çiz)"
+				title="Yeni Gizli Cevap Ekle (sürükleyerek çiz) — yalnızca yönetici"
 				onclick={() => teacherStore.toggleAddMode()}
 				class="flex h-9 w-9 items-center justify-center rounded text-sm transition-colors {teacherStore.addMode
 					? 'bg-red-500 text-white'
