@@ -1,0 +1,69 @@
+[
+  {
+    "id": "demo-mercek-p1",
+    "page": 1,
+    "type": "lens",
+    "x": 0.1085,
+    "y": 0.1026,
+    "width": 0.0724,
+    "height": 0.0513,
+    "label": "Örnek Etkinlik"
+  },
+  {
+    "id": "demo-metin-p1",
+    "page": 1,
+    "type": "text",
+    "x": 0.1085,
+    "y": 0.1796,
+    "width": 0.2895,
+    "height": 0.0641,
+    "text": "Öğretmen notu — bu metin doğrudan sayfada."
+  },
+  {
+    "id": "demo-buton-p1",
+    "page": 1,
+    "type": "button",
+    "x": 0.1085,
+    "y": 0.2694,
+    "width": 0.2352,
+    "height": 0.0411,
+    "label": "Kaynak Aç",
+    "href": "https://www.embedpdf.com"
+  },
+  {
+    "id": "demo-cevap-p1",
+    "page": 1,
+    "type": "answer",
+    "x": 0.1085,
+    "y": 0.3335,
+    "width": 0.2895,
+    "height": 0.0385
+  },
+  {
+    "id": "demo-goster-p1",
+    "page": 1,
+    "type": "reveal",
+    "x": 0.4342,
+    "y": 0.3335,
+    "width": 0.2895,
+    "height": 0.0385,
+    "question": "2+2 kaç eder?",
+    "answer": "4"
+  },
+  {
+    "id": "demo-izgara-p1",
+    "page": 1,
+    "type": "grid",
+    "x": 0.1085,
+    "y": 0.3977,
+    "width": 0.2714,
+    "height": 0.0385,
+    "cells": [
+      "",
+      "",
+      "",
+      "",
+      ""
+    ]
+  }
+]
