@@ -19,7 +19,10 @@
 	const answers = $derived(teacherStore.forPage(documentId, pageNumber));
 
 	function styleFor(rect: Rect) {
-		return `position:absolute; left:${rect.origin.x * scale}px; top:${rect.origin.y * scale}px; width:${rect.size.width * scale}px; height:${rect.size.height * scale}px; pointer-events:auto;`;
+		// touch-action:none — dokunmatik cihazlarda tarayıcının bu öğeyi "kaydırma" jesti
+		// sanıp sürükle-taşı/tıkla-aç-kapa olaylarımızla çakışmasını (ve bu yüzden öğenin
+		// yanlışlıkla kayıp/yerinden oynamış görünmesini) engeller.
+		return `position:absolute; left:${rect.origin.x * scale}px; top:${rect.origin.y * scale}px; width:${rect.size.width * scale}px; height:${rect.size.height * scale}px; pointer-events:auto; touch-action:none;`;
 	}
 
 	let pageEl = $state<HTMLDivElement | null>(null);
@@ -144,7 +147,7 @@
 
 <div
 	bind:this={pageEl}
-	style="position:absolute; inset:0; {teacherStore.addMode
+	style="position:absolute; inset:0; touch-action:none; {teacherStore.addMode
 		? 'cursor:crosshair; pointer-events:auto;'
 		: 'pointer-events:none;'}"
 	onpointerdown={handleBackgroundPointerDown}
