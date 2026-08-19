@@ -1707,6 +1707,19 @@ export const commands: Record<string, Command<State>> = {
         ui.forDocument(documentId).openModal('link-modal', { source: 'annotation' });
       }
     },
+    // Buton bu komut zaten bir link varsa mavi/aktif görünsün — aksi halde ikon değişimi
+    // (🔗 -> 🔗-kapalı) çok küçük olduğundan fark edilmiyor ve kullanıcı "link ekleyeyim"
+    // diye tekrar tıklayınca az önce eklediği linki yanlışlıkla SİLİYORDU (bu buton
+    // add/remove arasında geçiş yapan bir toggle). Aktif renk bu tuzağı gözle görünür kılar.
+    active: ({ registry, documentId }) => {
+      const scope = registry
+        .getPlugin<AnnotationPlugin>(ANNOTATION_PLUGIN_ID)
+        ?.provides()
+        .forDocument(documentId);
+      const selected = scope?.getSelectedAnnotation();
+      if (!selected) return false;
+      return scope?.hasAttachedLinks(selected.object.id) ?? false;
+    },
     visible: ({ registry, documentId }) => {
       const scope = registry
         .getPlugin<AnnotationPlugin>(ANNOTATION_PLUGIN_ID)

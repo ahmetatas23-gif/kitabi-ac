@@ -8,6 +8,8 @@
 	import { naturalPenStore, toggleNaturalPen, deactivateNaturalPen } from '$lib/naturalpen/store.svelte';
 	import { curtainStore, toggleCurtain } from '$lib/curtain/store.svelte';
 	import { useInteractionManager } from '@embedpdf/plugin-interaction-manager/svelte';
+	import { useAnnotation } from '@embedpdf/plugin-annotation/svelte';
+	import { LockModeType } from '@embedpdf/plugin-annotation';
 
 	interface Props {
 		documentId: string;
@@ -15,6 +17,41 @@
 	let { documentId }: Props = $props();
 
 	const interactionManager = useInteractionManager(() => documentId);
+
+	// --- Link tıklamaları gerçekten açılsın + "Görünüm Kilidi" -----------------------------
+	// EmbedPDF'te bir link annotasyonu varsayılan (kilitsiz/düzenleme) durumda TIKLANINCA
+	// açılmaz — tıklama, üstündeki resmi/nesneyi SEÇMEK için kullanılır (böylece taşıyabilir/
+	// silebilirsin). Linkin gerçekten "tıkla-aç" davranışına geçmesi için belgenin annotasyon
+	// kategorileri kilitlenmeli (LockModeType.Include) — bu, EmbedPDF'in "görüntüleme modu"
+	// kavramına karşılık gelir. Aşağıdaki buton bunu açıp kapatıyor; kilitliyken linkler (ve
+	// diğer eklenen içerik) tıklanabilir/görüntülenebilir ama taşınamaz/silinemez — kilit açıkken
+	// (varsayılan) her şey normal şekilde düzenlenebilir.
+	const annotationScope = useAnnotation(() => documentId);
+	const isViewLocked = $derived(
+		(annotationScope.provides?.getLocked().type ?? LockModeType.None) !== LockModeType.None
+	);
+	function toggleViewLock() {
+		const scope = annotationScope.provides;
+		if (!scope) return;
+		if (scope.getLocked().type === LockModeType.None) {
+			scope.setLocked({ type: LockModeType.Include, categories: ['annotation', 'markup'] });
+		} else {
+			scope.setLocked({ type: LockModeType.None });
+		}
+	}
+	// Link'e tıklayınca (görüntüleme modundayken) URI hedefliyse gerçekten yeni sekmede aç.
+	// EmbedPDF'in kendi "AnnotationNavigationHandler" bileşeni bunu yapıyor AMA paketin dışa
+	// aktardığı (export edilen) bileşenler arasında değil — o yüzden aynı mantığı burada
+	// kendimiz uyguluyoruz (onNavigate genel/public API'nin bir parçası).
+	$effect(() => {
+		const scope = annotationScope.provides;
+		if (!scope) return;
+		return scope.onNavigate((event) => {
+			if (event.result.outcome === 'uri' && event.result.uri) {
+				window.open(event.result.uri, '_blank', 'noopener,noreferrer');
+			}
+		});
+	});
 
 	function handleNaturalPenToggle() {
 		toggleNaturalPen();
@@ -267,6 +304,24 @@
 				: 'text-slate-700 hover:bg-slate-100'}"
 	>
 		🪟
+	</button>
+
+	<!-- Görünüm Kilidi — açıkken eklenen görsel/link gibi içerikler TIKLANINCA gerçekten
+	     çalışır (link açılır) ama taşınamaz/silinemez; kapalıyken (varsayılan) normal şekilde
+	     düzenlenebilir. Bir link eklendikten sonra test etmek/kullanmak için bunu açman gerekir. -->
+	<button
+		type="button"
+		title={isViewLocked
+			? 'Görünüm Kilidi AÇIK — linkler tıklanınca açılır, içerik düzenlenemez. Kapatmak için tıkla.'
+			: 'Görünüm Kilidi KAPALI — içerik düzenlenebilir. Linklerin tıklanınca açılması için kilitle.'}
+		onclick={toggleViewLock}
+		class="flex h-9 w-9 items-center justify-center rounded text-sm transition-colors {isViewLocked
+			? 'bg-amber-400 text-slate-900'
+			: toolbarState.docked
+				? 'text-slate-200 hover:bg-slate-700'
+				: 'text-slate-700 hover:bg-slate-100'}"
+	>
+		{isViewLocked ? '🔒' : '🔓'}
 	</button>
 
 	<ZoomMenu {documentId} docked={toolbarState.docked} />
