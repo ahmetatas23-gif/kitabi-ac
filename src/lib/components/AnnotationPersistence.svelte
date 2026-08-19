@@ -12,14 +12,25 @@
 	let loaded = false;
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
-	// --- ArrayBuffer <-> base64 dönüşümü -------------------------------------------------
-	// "insert:add-image" (📷) ile eklenen görseller STAMP annotasyonu olarak, gerçek görsel
-	// baytlarını `ctx.data` alanında bir ArrayBuffer olarak taşır (bkz. EmbedPDF tipi:
+	// --- İkili (binary) veri <-> base64 dönüşümü ------------------------------------------
+	// "insert:add-image" (📷) ile eklenen görseller STAMP annotasyonu olarak dışa aktarılırken
+	// gerçek görsel/PDF baytları `ctx.data` alanında taşınır (bkz. EmbedPDF tipi:
 	// AnnotationTransferItem — "For stamps, ctx carries the binary data needed for
-	// round-tripping"). JSON.stringify bir ArrayBuffer'ı SESSİZCE `{}`'e çeviriyor — yani
-	// görsel baytları kayboluyor, sayfa yenilenince görsel "kayboluyormuş" gibi görünüyordu.
-	// Kaydetmeden önce ArrayBuffer'ı base64 metne çeviriyoruz, yüklerken geri ArrayBuffer'a
-	// çeviriyoruz — böylece gerçek görsel verisi localStorage'da güvenle saklanıyor.
+	// round-tripping"). JSON.stringify ikili veriyi SESSİZCE bozuyor/kaybediyor.
+	//
+	// İLK denemede sadece `instanceof ArrayBuffer` kontrol edilmişti ama motor (PDFium/WASM
+	// köprüsü) bu baytları ArrayBuffer DEĞİL, bir Uint8Array (TypedArray GÖRÜNÜMÜ) olarak
+	// döndürüyor — bu yüzden kontrol hiç eşleşmiyor, veri hiç dönüştürülmeden JSON.stringify'a
+	// gidiyor ve yine bozuluyordu (görsel hâlâ kayboluyordu). Artık ArrayBuffer VE her türlü
+	// TypedArray/DataView (ArrayBuffer.isView ile) birlikte yakalanıyor.
+	function toArrayBuffer(data: unknown): ArrayBuffer | null {
+		if (data instanceof ArrayBuffer) return data;
+		if (ArrayBuffer.isView(data)) {
+			const view = data as ArrayBufferView;
+			return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
+		}
+		return null;
+	}
 	function arrayBufferToBase64(buf: ArrayBuffer): string {
 		let binary = '';
 		const bytes = new Uint8Array(buf);
@@ -35,17 +46,19 @@
 		for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
 		return bytes.buffer;
 	}
-	// Kaydetmeden önce: gerçek ArrayBuffer'ları JSON-güvenli base64 sarmalayıcıya çevirir.
+	// Kaydetmeden önce: gerçek ikili veriyi JSON-güvenli base64 sarmalayıcıya çevirir.
 	function prepareForStorage(items: unknown): unknown {
 		return (items as Array<{ ctx?: { data?: unknown } }>).map((item) => {
-			const data = item?.ctx?.data;
-			if (data instanceof ArrayBuffer) {
-				return { ...item, ctx: { ...item.ctx, data: { __b64: arrayBufferToBase64(data) } } };
+			const buf = toArrayBuffer(item?.ctx?.data);
+			if (buf) {
+				return { ...item, ctx: { ...item.ctx, data: { __b64: arrayBufferToBase64(buf) } } };
 			}
 			return item;
 		});
 	}
-	// Yüklerken: base64 sarmalayıcıyı gerçek ArrayBuffer'a geri çevirir.
+	// Yüklerken: base64 sarmalayıcıyı gerçek ArrayBuffer'a geri çevirir (import bu tipi bekler
+	// — bkz. AnnotationTransferItem tipindeki "{ data: ArrayBuffer, mimeType }" tercih edilen
+	// biçim açıklaması).
 	function restoreFromStorage(items: unknown): unknown {
 		return (items as Array<{ ctx?: { data?: unknown } }>).map((item) => {
 			const data = item?.ctx?.data as { __b64?: string } | undefined;
