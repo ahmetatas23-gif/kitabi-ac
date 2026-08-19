@@ -1,1 +1,13 @@
 @import 'tailwindcss';
+
+/* TTKB Dik Temel Abece (Bold) — MEB'in ilkokul yazı öğretiminde kullandığı standart
+   el yazısı fontu. Öğretmen kendi kitap görüntüleyicisinde "Gizli Metin" ve "Metin"
+   (hidden_answers) içeriğinin öğrencilerin alıştığı bu yazı stiliyle görünmesini istedi
+   — bkz. $lib/teacher/components/HiddenAnswerLayer.svelte ve HiddenAnswerForm.svelte. */
+@font-face {
+	font-family: 'TTKB Dik Temel Abece';
+	src: url('/fonts/TTKBDikTemelAbeceBold.ttf') format('truetype');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}

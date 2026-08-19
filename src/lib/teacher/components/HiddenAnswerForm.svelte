@@ -204,7 +204,8 @@
 				<textarea
 					bind:value={text}
 					rows="4"
-					class="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
+					style="font-family:'TTKB Dik Temel Abece', sans-serif;"
+					class="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-base"
 					placeholder={kind === 'metin' ? 'Örn. Not: Sayfa 12 ile bağlantılıdır.' : 'Örn. 472\n(Enter ile satır sonu — çizgili sayfada satırları istediğin yerden bölebilirsin)'}
 				></textarea>
 				<span class="mt-1 block text-[10px] font-normal text-slate-400"

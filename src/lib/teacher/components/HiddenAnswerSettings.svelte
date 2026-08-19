@@ -133,7 +133,8 @@
 			<textarea
 				bind:value={textDraft}
 				rows="4"
-				class="w-56 rounded border border-slate-300 px-2 py-1 text-xs"
+				style="font-family:'TTKB Dik Temel Abece', sans-serif;"
+				class="w-56 rounded border border-slate-300 px-2 py-1 text-sm"
 				placeholder="Enter ile satır sonu — her satırı çizgili sayfadaki ilgili çizgiye denk gelecek şekilde böl"
 			></textarea>
 			<div class="mt-1 flex justify-end gap-1">

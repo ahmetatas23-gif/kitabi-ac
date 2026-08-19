@@ -240,7 +240,7 @@
 			>
 				<span
 					class="pointer-events-none select-none whitespace-pre-wrap"
-					style="font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
+					style="font-family:'TTKB Dik Temel Abece', sans-serif; font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
 				>{a.text}</span>
 				{#if teacherStore.canManage}
 					<button
@@ -324,7 +324,7 @@
 				>
 					<span
 						class="pointer-events-none select-none whitespace-pre-wrap"
-						style="font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
+						style="font-family:'TTKB Dik Temel Abece', sans-serif; font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
 					>{a.text}</span>
 					<button
 						type="button"
@@ -356,7 +356,7 @@
 				<div style={styleForText(a.rect) + 'z-index:20; pointer-events:none;'} class="flex items-start">
 					<span
 						class="select-none whitespace-pre-wrap"
-						style="font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
+						style="font-family:'TTKB Dik Temel Abece', sans-serif; font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
 					>{a.text}</span>
 				</div>
 			{/if}
