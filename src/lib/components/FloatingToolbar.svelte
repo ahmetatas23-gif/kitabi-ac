@@ -43,6 +43,15 @@
 		'annotation:add-ink',
 		'annotation:add-ink-highlighter',
 		'annotation:add-text',
+		// Görsel ekle (📷) — EmbedPDF referansındaki "Insert Image" ile birebir aynı: tıklayınca
+		// dosya seçici açılır, seçilen görsel sayfaya yerleştirilir (embedpdf'in kendi 'stamp'
+		// aracı, ayrı bir şey yazmaya gerek yok — proje zaten bu komutu tanımlıyordu, sadece
+		// araç çubuğuna eklenmemişti).
+		'insert:add-image',
+		// Seçili görsele/nesneye link ata (🔗) — EmbedPDF referansındaki "annotation style"
+		// panelindeki link atama özelliğiyle aynı: bir görsel/nesne seçiliyken tıklayınca link
+		// modalı açılır, girilen adres o nesneye tıklanınca açılır hâle gelir.
+		'annotation:toggle-link',
 		'annotation:delete-selected',
 		'history:undo',
 		'history:redo',
@@ -99,9 +108,11 @@
 		const raw = localStorage.getItem(DOCKED_KEY);
 		return raw === null ? true : raw === 'true'; // varsayılan: yapışık (sabit sol şerit)
 	}
-	function loadSide(): 'left' | 'right' {
+	function loadSide(): 'left' | 'right' | 'top' | 'bottom' {
 		if (typeof localStorage === 'undefined') return 'left';
-		return (localStorage.getItem(SIDE_KEY) as 'left' | 'right') ?? 'left';
+		return (
+			(localStorage.getItem(SIDE_KEY) as 'left' | 'right' | 'top' | 'bottom') ?? 'left'
+		);
 	}
 
 	let pos = $state(loadPos());
@@ -111,14 +122,17 @@
 	let dragging = $state(false);
 	let dragOffset = { x: 0, y: 0 };
 
+	// Araç çubuğu artık dört kenara da (sol/sağ/üst/alt) yapışabiliyor. Yapışıkken
+	// sürüklemeye başlarken, hangi kenarda olursa olsun mevcut (ekrandaki) konumdan
+	// başlar ki elin altından "zıplamasın".
 	function startDrag(e: PointerEvent) {
 		dragging = true;
-		// Yapışıkken sürüklemeye başlarken mevcut (ekrandaki) konumdan başla.
 		if (toolbarState.docked) {
-			pos =
-				toolbarState.side === 'left'
-					? { x: 8, y: e.clientY - 24 }
-					: { x: window.innerWidth - approxWidth - 8, y: e.clientY - 24 };
+			if (toolbarState.side === 'left') pos = { x: 8, y: e.clientY - 24 };
+			else if (toolbarState.side === 'right')
+				pos = { x: window.innerWidth - approxWidth - 8, y: e.clientY - 24 };
+			else if (toolbarState.side === 'top') pos = { x: e.clientX - 24, y: 8 };
+			else pos = { x: e.clientX - 24, y: window.innerHeight - approxWidth - 8 };
 		}
 		dragOffset = { x: e.clientX - pos.x, y: e.clientY - pos.y };
 		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -126,11 +140,21 @@
 	function onDrag(e: PointerEvent) {
 		if (!dragging) return;
 		pos = clampPos({ x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y });
-		const nearLeft = pos.x < DOCK_SNAP_DISTANCE;
-		const nearRight = pos.x + approxWidth > window.innerWidth - DOCK_SNAP_DISTANCE;
-		toolbarState.docked = nearLeft || nearRight;
-		if (nearRight) toolbarState.side = 'right';
-		else if (nearLeft) toolbarState.side = 'left';
+		const distLeft = pos.x;
+		const distRight = window.innerWidth - (pos.x + approxWidth);
+		const distTop = pos.y;
+		const distBottom = window.innerHeight - (pos.y + approxWidth);
+		// En yakın kenar hangisiyse ona yapışır — köşelere yakınken de tutarlı
+		// (en kısa mesafeli tek kenar kazanır) davranır.
+		const dists: [('left' | 'right' | 'top' | 'bottom'), number][] = [
+			['left', distLeft],
+			['right', distRight],
+			['top', distTop],
+			['bottom', distBottom]
+		];
+		const [closestSide, closestDist] = dists.reduce((a, b) => (b[1] < a[1] ? b : a));
+		toolbarState.docked = closestDist < DOCK_SNAP_DISTANCE;
+		if (toolbarState.docked) toolbarState.side = closestSide;
 	}
 	function endDrag() {
 		if (!dragging) return;
@@ -144,17 +168,26 @@
 		localStorage.setItem(ORIENT_KEY, orientation);
 	}
 
-	const effectiveOrientation = $derived(toolbarState.docked ? 'vertical' : orientation);
+	// Sol/sağa yapışıkken dikey (ince, uzun) şerit; üst/alta yapışıkken yatay
+	// (ince, geniş) şerit olur.
+	const dockedOrientation = $derived(
+		toolbarState.side === 'top' || toolbarState.side === 'bottom' ? 'horizontal' : 'vertical'
+	);
+	const effectiveOrientation = $derived(toolbarState.docked ? dockedOrientation : orientation);
 </script>
 
 <div
 	style={toolbarState.docked
-		? `position:fixed; ${toolbarState.side}:0; top:0; bottom:0; z-index:500; touch-action:none;`
+		? dockedOrientation === 'vertical'
+			? `position:fixed; ${toolbarState.side}:0; top:0; bottom:0; z-index:500; touch-action:none;`
+			: `position:fixed; ${toolbarState.side}:0; left:0; right:0; z-index:500; touch-action:none;`
 		: `position:fixed; left:${pos.x}px; top:${pos.y}px; z-index:500; touch-action:none;`}
 	class="flex {effectiveOrientation === 'vertical'
 		? 'flex-col'
 		: 'flex-row'} items-center gap-0.5 {toolbarState.docked
-		? `h-full justify-start ${toolbarState.side === 'left' ? 'border-r' : 'border-l'} border-slate-700 bg-slate-800 py-2`
+		? dockedOrientation === 'vertical'
+			? `h-full justify-start ${toolbarState.side === 'left' ? 'border-r' : 'border-l'} border-slate-700 bg-slate-800 py-2`
+			: `w-full justify-start ${toolbarState.side === 'top' ? 'border-b' : 'border-t'} border-slate-700 bg-slate-800 px-2`
 		: 'rounded-lg border border-slate-200 bg-white/95 p-1 shadow-xl backdrop-blur'}"
 >
 	<!-- Sürükleme tutamacı -->
