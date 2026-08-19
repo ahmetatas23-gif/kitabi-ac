@@ -27,8 +27,12 @@
 	// diğer eklenen içerik) tıklanabilir/görüntülenebilir ama taşınamaz/silinemez — kilit açıkken
 	// (varsayılan) her şey normal şekilde düzenlenebilir.
 	const annotationScope = useAnnotation(() => documentId);
+	// ÖNEMLİ: annotationScope.state (annotation eklentisinin canlı/reaktif durumu) okunmalı —
+	// annotationScope.provides.getLocked() salt bir metot çağrısıdır, Svelte'in $derived'ı
+	// bunun İÇİNDE hangi state'in okunduğunu izleyemez, bu yüzden kilit değiştiğinde buton
+	// ikonu güncellenmiyordu (görsel bir hataydı; asıl kilitleme yine de çalışıyordu).
 	const isViewLocked = $derived(
-		(annotationScope.provides?.getLocked().type ?? LockModeType.None) !== LockModeType.None
+		(annotationScope.state?.locked?.type ?? LockModeType.None) !== LockModeType.None
 	);
 	function toggleViewLock() {
 		const scope = annotationScope.provides;

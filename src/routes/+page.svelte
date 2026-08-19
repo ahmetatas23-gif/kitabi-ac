@@ -64,6 +64,7 @@
   import { toolbarState } from '$lib/toolbarState.svelte';
   import { teacherStore } from '$lib/teacher/store.svelte';
   import HiddenAnswerLayer from '$lib/teacher/components/HiddenAnswerLayer.svelte';
+  import LinkClickOverlay from '$lib/components/LinkClickOverlay.svelte';
   import TeacherControls from '$lib/teacher/components/TeacherControls.svelte';
   import NaturalPenLayer from '$lib/naturalpen/components/NaturalPenLayer.svelte';
   import CurtainOverlay from '$lib/curtain/components/CurtainOverlay.svelte';
@@ -409,6 +410,7 @@
                               groupSelectionMenu={groupAnnotationMenu.renderFn}
                             />
                             <HiddenAnswerLayer {documentId} pageIndex={page.pageIndex} />
+                            <LinkClickOverlay {documentId} pageIndex={page.pageIndex} />
                             <NaturalPenLayer {documentId} pageIndex={page.pageIndex} />
                             <MarqueeZoom {documentId} pageIndex={page.pageIndex} />
                           </PagePointerProvider>
