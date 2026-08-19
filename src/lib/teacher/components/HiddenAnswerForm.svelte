@@ -54,6 +54,40 @@
 		return presignData.publicUrl as string;
 	}
 
+	// --- Popup'ı sürükle-taşı ---------------------------------------------------------
+	// Popup çizilen dikdörtgenin yanına açılıyor ama sayfanın ALT kısmına yakın bir yere
+	// çizilirse (özellikle şimdi görsel/metin seçenekleriyle popup uzadığı için) altındaki
+	// "Ekle"/"İptal" butonları ekranın dışına taşıp görünmez olabiliyordu. Bu yüzden hem
+	// (a) popup'a max-height + iç kaydırma eklendi (aşağıda), hem de (b) tutamaçtan
+	// sürükleyerek popup'ı istediği yere taşıyabilsin diye bu bölüm eklendi — diğer
+	// sürüklenebilir bileşenlerle (FloatingToolbar, AdminLogin) AYNI pointer-capture deseni.
+	function parsePopupStyle(s: string) {
+		const l = /left:\s*([\d.]+)px/.exec(s);
+		const t = /top:\s*([\d.]+)px/.exec(s);
+		return { x: l ? parseFloat(l[1]) : 20, y: t ? parseFloat(t[1]) : 20 };
+	}
+	let pos = $state(parsePopupStyle(popupStyle));
+	let dragging = false;
+	let dragOffset = { x: 0, y: 0 };
+	function startDrag(e: PointerEvent) {
+		dragging = true;
+		dragOffset = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+		(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+	}
+	function onDrag(e: PointerEvent) {
+		if (!dragging) return;
+		const margin = 8;
+		const maxX = Math.max(margin, window.innerWidth - 260 - margin);
+		const maxY = Math.max(margin, window.innerHeight - 60 - margin);
+		pos = {
+			x: Math.min(Math.max(e.clientX - dragOffset.x, margin), maxX),
+			y: Math.min(Math.max(e.clientY - dragOffset.y, margin), maxY)
+		};
+	}
+	function endDrag() {
+		dragging = false;
+	}
+
 	async function save() {
 		if (kind === 'gorsel') {
 			if (!imageFile) {
@@ -109,10 +143,21 @@
 	<div class="fixed inset-0 z-[299] bg-black/10" role="presentation" onclick={oncancel}></div>
 
 	<div
-		style={popupStyle + 'z-index:300;'}
+		style={`position:fixed; left:${pos.x}px; top:${pos.y}px; z-index:300; max-height:calc(100vh - 16px); overflow-y:auto;`}
 		class="w-64 rounded-xl border border-slate-200 bg-white p-4 shadow-2xl"
 	>
-		<h3 class="mb-3 text-sm font-bold text-slate-800">🔒 Gizli Cevap / İçerik Ekle</h3>
+		<div
+			class="mb-3 -mx-1 -mt-1 flex cursor-move select-none items-center justify-between gap-2 rounded px-1 py-1 hover:bg-slate-50"
+			onpointerdown={startDrag}
+			onpointermove={onDrag}
+			onpointerup={endDrag}
+			role="button"
+			tabindex="0"
+			title="Sürükleyerek taşı"
+		>
+			<h3 class="text-sm font-bold text-slate-800">🔒 Gizli Cevap / İçerik Ekle</h3>
+			<span class="text-xs text-slate-300">⠿</span>
+		</div>
 
 		<div class="mb-3 grid grid-cols-2 gap-2">
 			<button
