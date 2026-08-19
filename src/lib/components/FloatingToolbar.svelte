@@ -8,8 +8,6 @@
 	import { naturalPenStore, toggleNaturalPen, deactivateNaturalPen } from '$lib/naturalpen/store.svelte';
 	import { curtainStore, toggleCurtain } from '$lib/curtain/store.svelte';
 	import { useInteractionManager } from '@embedpdf/plugin-interaction-manager/svelte';
-	import { useAnnotation } from '@embedpdf/plugin-annotation/svelte';
-	import { LockModeType } from '@embedpdf/plugin-annotation';
 
 	interface Props {
 		documentId: string;
@@ -18,44 +16,14 @@
 
 	const interactionManager = useInteractionManager(() => documentId);
 
-	// --- Link tıklamaları gerçekten açılsın + "Görünüm Kilidi" -----------------------------
-	// EmbedPDF'te bir link annotasyonu varsayılan (kilitsiz/düzenleme) durumda TIKLANINCA
-	// açılmaz — tıklama, üstündeki resmi/nesneyi SEÇMEK için kullanılır (böylece taşıyabilir/
-	// silebilirsin). Linkin gerçekten "tıkla-aç" davranışına geçmesi için belgenin annotasyon
-	// kategorileri kilitlenmeli (LockModeType.Include) — bu, EmbedPDF'in "görüntüleme modu"
-	// kavramına karşılık gelir. Aşağıdaki buton bunu açıp kapatıyor; kilitliyken linkler (ve
-	// diğer eklenen içerik) tıklanabilir/görüntülenebilir ama taşınamaz/silinemez — kilit açıkken
-	// (varsayılan) her şey normal şekilde düzenlenebilir.
-	const annotationScope = useAnnotation(() => documentId);
-	// ÖNEMLİ: annotationScope.state (annotation eklentisinin canlı/reaktif durumu) okunmalı —
-	// annotationScope.provides.getLocked() salt bir metot çağrısıdır, Svelte'in $derived'ı
-	// bunun İÇİNDE hangi state'in okunduğunu izleyemez, bu yüzden kilit değiştiğinde buton
-	// ikonu güncellenmiyordu (görsel bir hataydı; asıl kilitleme yine de çalışıyordu).
-	const isViewLocked = $derived(
-		(annotationScope.state?.locked?.type ?? LockModeType.None) !== LockModeType.None
-	);
-	function toggleViewLock() {
-		const scope = annotationScope.provides;
-		if (!scope) return;
-		if (scope.getLocked().type === LockModeType.None) {
-			scope.setLocked({ type: LockModeType.Include, categories: ['annotation', 'markup'] });
-		} else {
-			scope.setLocked({ type: LockModeType.None });
-		}
-	}
-	// Link'e tıklayınca (görüntüleme modundayken) URI hedefliyse gerçekten yeni sekmede aç.
-	// EmbedPDF'in kendi "AnnotationNavigationHandler" bileşeni bunu yapıyor AMA paketin dışa
-	// aktardığı (export edilen) bileşenler arasında değil — o yüzden aynı mantığı burada
-	// kendimiz uyguluyoruz (onNavigate genel/public API'nin bir parçası).
-	$effect(() => {
-		const scope = annotationScope.provides;
-		if (!scope) return;
-		return scope.onNavigate((event) => {
-			if (event.result.outcome === 'uri' && event.result.uri) {
-				window.open(event.result.uri, '_blank', 'noopener,noreferrer');
-			}
-		});
-	});
+	// NOT: Eskiden burada EmbedPDF'in native görsel/link/metin (stamp/link/freeText)
+	// araçları ve bunları çalıştırmak için bir "Görünüm Kilidi" düğmesi vardı. Bu
+	// araçlar yalnızca tarayıcının localStorage'ında (tek cihaz) kalıcı olduğu için
+	// admin'in eklediği görsel/link/metin diğer öğretmenlere/cihazlara hiç yansımıyordu.
+	// Bu özellik artık Supabase'e (hidden_answers tablosu, 'gorsel'/'metin' türleri —
+	// bkz. $lib/teacher) taşındı: "➕🔒 Ekle" düğmesiyle eklenen 🖼️ Görsel ve 🅰️ Metin
+	// TÜM öğretmenlere/cihazlara kalıcı olarak görünür, silme/düzenleme yalnızca admin'de.
+	// Bu yüzden native stamp/link/freeText komutları ve kilit düğmesi kaldırıldı.
 
 	function handleNaturalPenToggle() {
 		toggleNaturalPen();
@@ -77,22 +45,17 @@
 		}
 	}
 
+	// NOT: 'annotation:add-text' (freeText), 'insert:add-image' (stamp) ve
+	// 'annotation:toggle-link' kasıtlı olarak burada YOK — bkz. yukarıdaki not.
+	// Kalan 'annotation:add-ink'/'annotation:add-ink-highlighter' kişisel/geçici
+	// kalem çizimleri için, hâlâ localStorage üzerinden (yalnızca bu cihazda)
+	// kalıcı — bu, admin'in TÜM öğretmenlerle paylaştığı içerik değil.
 	const TOOL_COMMANDS = [
 		'panel:toggle-sidebar',
 		'panel:toggle-search',
 		'pointer:toggle',
 		'annotation:add-ink',
 		'annotation:add-ink-highlighter',
-		'annotation:add-text',
-		// Görsel ekle (📷) — EmbedPDF referansındaki "Insert Image" ile birebir aynı: tıklayınca
-		// dosya seçici açılır, seçilen görsel sayfaya yerleştirilir (embedpdf'in kendi 'stamp'
-		// aracı, ayrı bir şey yazmaya gerek yok — proje zaten bu komutu tanımlıyordu, sadece
-		// araç çubuğuna eklenmemişti).
-		'insert:add-image',
-		// Seçili görsele/nesneye link ata (🔗) — EmbedPDF referansındaki "annotation style"
-		// panelindeki link atama özelliğiyle aynı: bir görsel/nesne seçiliyken tıklayınca link
-		// modalı açılır, girilen adres o nesneye tıklanınca açılır hâle gelir.
-		'annotation:toggle-link',
 		'annotation:delete-selected',
 		'history:undo',
 		'history:redo',
@@ -308,24 +271,6 @@
 				: 'text-slate-700 hover:bg-slate-100'}"
 	>
 		🪟
-	</button>
-
-	<!-- Görünüm Kilidi — açıkken eklenen görsel/link gibi içerikler TIKLANINCA gerçekten
-	     çalışır (link açılır) ama taşınamaz/silinemez; kapalıyken (varsayılan) normal şekilde
-	     düzenlenebilir. Bir link eklendikten sonra test etmek/kullanmak için bunu açman gerekir. -->
-	<button
-		type="button"
-		title={isViewLocked
-			? 'Görünüm Kilidi AÇIK — linkler tıklanınca açılır, içerik düzenlenemez. Kapatmak için tıkla.'
-			: 'Görünüm Kilidi KAPALI — içerik düzenlenebilir. Linklerin tıklanınca açılması için kilitle.'}
-		onclick={toggleViewLock}
-		class="flex h-9 w-9 items-center justify-center rounded text-sm transition-colors {isViewLocked
-			? 'bg-amber-400 text-slate-900'
-			: toolbarState.docked
-				? 'text-slate-200 hover:bg-slate-700'
-				: 'text-slate-700 hover:bg-slate-100'}"
-	>
-		{isViewLocked ? '🔒' : '🔓'}
 	</button>
 
 	<ZoomMenu {documentId} docked={toolbarState.docked} />

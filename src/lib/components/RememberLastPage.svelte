@@ -11,11 +11,18 @@
 
 	let restored = false;
 
-	// ÖNEMLİ: Tek seferlik sabit bir gecikme (150ms) yetersizdi — özellikle büyük (50MB+)
-	// kitaplarda sayfa/viewport ölçümleri o kadar sürede hazır olmayabiliyor, bu durumda
-	// scrollToPage sessizce hiçbir şey yapmıyordu ve bir daha da denenmiyordu (restored=true
-	// zaten set edilmişti). Artık scroll altyapısı GERÇEKTEN hazır olana kadar (totalPages>0)
-	// birkaç kez, artan aralıklarla tekrar deniyoruz; en fazla ~6 saniye boyunca.
+	// ÖNEMLİ (2. tur düzeltme): `scroll.state.totalPages` varsayılan olarak 1'den
+	// başlıyor (embedpdf'in kendi useScroll hook'unun İLK DEĞERİ — kitap gerçekte
+	// kaç sayfa olursa olsun, plugin/döküman henüz tam ayrışmadıysa 1 dönüyor).
+	// Önceki sürümde "provides && total>0" yeterli sanılmıştı ama total=1 de
+	// bu koşulu sağladığı için scrollToPage(Math.min(pageNumber,1))=1 çağrılıyor,
+	// yani PRATİKTE HİÇBİR ŞEY YAPMIYOR (zaten 1. sayfadayız) ve fonksiyon bir
+	// daha denemeden çıkıyordu — kaydedilen gerçek sayfaya HİÇBİR ZAMAN atlanmıyordu.
+	// Şimdi ya total kaydedilen sayfaya YETECEK KADAR büyümüş olmalı (total>=pageNumber,
+	// gerçek sayı öğrenilmiş demektir) YA DA total art arda birkaç yoklamada
+	// DEĞİŞMEDEN aynı kalmış olmalı (kitabın gerçek sayfa sayısı bu ve pageNumber
+	// ondan büyükse — örn. eski bir kayıt/başka kitap — yine de elimizdeki en iyi
+	// değere göre atlarız).
 	$effect(() => {
 		if (restored) return;
 		restored = true; // bu effect'in tekrar tetiklenmesini önle — asıl deneme aşağıdaki closure'da
@@ -24,14 +31,24 @@
 		const pageNumber = parseInt(saved, 10);
 		if (!(pageNumber > 1)) return;
 		let attempts = 0;
-		const maxAttempts = 20;
+		const maxAttempts = 25;
+		let lastTotal = -1;
+		let stableCount = 0;
 		const tryRestore = () => {
 			attempts++;
 			const provides = scroll.provides;
 			const total = scroll.state.totalPages;
-			if (provides && total && total > 0) {
-				provides.scrollToPage({ pageNumber: Math.min(pageNumber, total), behavior: 'auto' });
-				return;
+			if (provides && total) {
+				if (total === lastTotal) stableCount++;
+				else {
+					stableCount = 0;
+					lastTotal = total;
+				}
+				const confident = total >= pageNumber || (stableCount >= 2 && total > 1);
+				if (confident) {
+					provides.scrollToPage({ pageNumber: Math.min(pageNumber, total), behavior: 'auto' });
+					return;
+				}
 			}
 			if (attempts < maxAttempts) {
 				setTimeout(tryRestore, 300);

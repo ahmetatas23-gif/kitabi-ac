@@ -23,7 +23,8 @@ function saveJSON(key: string, value: unknown) {
 // olarak tutuluyor (rect_x/rect_y/rect_width/rect_height); "hidden" alanı
 // da tablo kolonunda default_hidden adıyla saklanıyor ama YAŞAYAN/güncel
 // gizlilik durumu olarak kullanılıyor (öğretmen değiştirince kalıcı olur
-// ve tüm görüntüleyicilere yansır).
+// ve tüm görüntüleyicilere yansır). image_url/link_url yalnızca 'gorsel'
+// türünde dolu olur.
 interface HiddenAnswerRow {
 	id: string;
 	book_id: string;
@@ -34,6 +35,8 @@ interface HiddenAnswerRow {
 	rect_width: number;
 	rect_height: number;
 	text: string | null;
+	image_url: string | null;
+	link_url: string | null;
 	font_size: number | null;
 	color: string | null;
 	default_hidden: boolean;
@@ -51,6 +54,8 @@ function rowToAnswer(r: HiddenAnswerRow): HiddenAnswer {
 			size: { width: r.rect_width, height: r.rect_height }
 		},
 		text: r.text ?? undefined,
+		imageUrl: r.image_url ?? undefined,
+		linkUrl: r.link_url ?? undefined,
 		fontSize: r.font_size ?? undefined,
 		color: r.color ?? undefined,
 		hidden: r.default_hidden,
@@ -69,6 +74,8 @@ function answerToRow(a: HiddenAnswer) {
 		rect_width: a.rect.size.width,
 		rect_height: a.rect.size.height,
 		text: a.text ?? null,
+		image_url: a.imageUrl ?? null,
+		link_url: a.linkUrl ?? null,
 		font_size: a.fontSize ?? null,
 		color: a.color ?? null,
 		default_hidden: a.hidden
@@ -82,9 +89,13 @@ class TeacherStoreSupabase {
 	// öğretmen kendi dersinde admin'in hazırladığı gizli cevapları
 	// açıp/kapatabilir. Ama içerik oluşturma/silme/taşıma/renk-punto
 	// değiştirme SADECE admin'e açık (bkz. canManage).
+	// NOT: 'gorsel' ve 'metin' türleri "gizli" değildir, teacherMode'dan
+	// BAĞIMSIZ olarak her zaman herkese görünür — teacherMode yalnızca
+	// bunların admin tarafından düzenlenebilir/taşınabilir olup olmadığını
+	// (düzenleme tutamaçlarının görünürlüğünü) etkiler.
 	teacherMode = $state(loadJSON(TEACHER_MODE_KEY, false));
 
-	// ➕ Ekleme Modu — sadece YENİ bir gizli alan/metin çizerken sayfanın
+	// ➕ Ekleme Modu — sadece YENİ bir gizli alan/metin/görsel çizerken sayfanın
 	// tamamını "yakalar". Sadece admin (canManage) kullanabilir.
 	addMode = $state(false);
 
@@ -147,7 +158,7 @@ class TeacherStoreSupabase {
 		}
 	}
 
-	/** Tam alan güncelleme (konum taşıma, punto/renk) — SADECE admin. */
+	/** Tam alan güncelleme (konum taşıma, punto/renk, görsel linki) — SADECE admin. */
 	async update(id: string, patch: Partial<HiddenAnswer>) {
 		if (!this.canManage) return;
 		const idx = this.answers.findIndex((a) => a.id === id);
@@ -179,7 +190,8 @@ class TeacherStoreSupabase {
 	 *  (RPC) üzerinden çalışır; bu fonksiyon SADECE default_hidden alanını
 	 *  değiştirir, metni/konumu/rengi değiştiremez veya silemez — böylece
 	 *  bir öğretmen yanlışlıkla ya da kasıtlı olarak admin'in hazırladığı
-	 *  içeriği bozamaz/silemez, sadece açıp kapatabilir. */
+	 *  içeriği bozamaz/silemez, sadece açıp kapatabilir. 'gorsel'/'metin'
+	 *  türleri için hiçbir yerden çağrılmaz (onlarda "gizli" kavramı yok). */
 	async toggleHidden(id: string) {
 		if (!this.canToggle) return;
 		const idx = this.answers.findIndex((a) => a.id === id);
@@ -202,11 +214,13 @@ class TeacherStoreSupabase {
 	}
 
 	showAllOnPage(bookId: string, pageNumber: number) {
-		for (const a of this.forPage(bookId, pageNumber)) if (a.hidden) this.toggleHidden(a.id);
+		for (const a of this.forPage(bookId, pageNumber))
+			if (a.hidden && (a.kind === 'gizli-metin' || a.kind === 'gizli-alan')) this.toggleHidden(a.id);
 	}
 
 	hideAllOnPage(bookId: string, pageNumber: number) {
-		for (const a of this.forPage(bookId, pageNumber)) if (!a.hidden) this.toggleHidden(a.id);
+		for (const a of this.forPage(bookId, pageNumber))
+			if (!a.hidden && (a.kind === 'gizli-metin' || a.kind === 'gizli-alan')) this.toggleHidden(a.id);
 	}
 }
 

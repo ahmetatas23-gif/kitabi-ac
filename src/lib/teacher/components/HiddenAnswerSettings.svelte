@@ -15,13 +15,18 @@
 		const next = Math.max(10, Math.min(48, (answer.fontSize ?? 20) + delta));
 		teacherStore.update(answer.id, { fontSize: next });
 	}
+
+	let linkDraft = $state(answer.linkUrl ?? '');
+	function saveLink() {
+		teacherStore.update(answer.id, { linkUrl: linkDraft.trim() || undefined });
+	}
 </script>
 
 <div
 	style={style + 'pointer-events:auto;'}
 	class="z-[400] flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1.5 shadow-xl"
 >
-	{#if answer.kind === 'gizli-metin'}
+	{#if answer.kind === 'gizli-metin' || answer.kind === 'metin'}
 		<button
 			type="button"
 			onclick={() => setFontSize(-2)}
@@ -47,6 +52,19 @@
 				title={c}
 			></button>
 		{/each}
+		<div class="mx-1 h-5 w-px bg-slate-200"></div>
+	{:else if answer.kind === 'gorsel'}
+		<input
+			bind:value={linkDraft}
+			placeholder="https://... (link, boş bırakılabilir)"
+			class="h-7 w-40 rounded border border-slate-300 px-2 text-xs"
+		/>
+		<button
+			type="button"
+			onclick={saveLink}
+			class="flex h-7 items-center rounded bg-blue-600 px-2 text-xs font-semibold text-white hover:bg-blue-700"
+			title="Linki kaydet">Kaydet</button
+		>
 		<div class="mx-1 h-5 w-px bg-slate-200"></div>
 	{/if}
 	<button

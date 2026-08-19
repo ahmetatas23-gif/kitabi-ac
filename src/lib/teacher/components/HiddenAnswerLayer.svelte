@@ -17,6 +17,11 @@
 	const pageNumber = $derived(pageIndex + 1);
 
 	const answers = $derived(teacherStore.forPage(documentId, pageNumber));
+	// 'gorsel' ve 'metin' — gizli DEĞİL, admin hazırladığında teacherMode'dan
+	// bağımsız olarak HER ZAMAN herkese görünür (bkz. types.ts notu).
+	const alwaysVisibleAnswers = $derived(
+		answers.filter((a) => a.kind === 'gorsel' || a.kind === 'metin')
+	);
 
 	function styleFor(rect: Rect) {
 		// touch-action:none — dokunmatik cihazlarda tarayıcının bu öğeyi "kaydırma" jesti
@@ -117,7 +122,14 @@
 		}
 		e.stopPropagation();
 		movingId = null;
-		if (!moved) teacherStore.toggleHidden(a.id);
+		if (!moved) {
+			if (a.kind === 'gizli-metin' || a.kind === 'gizli-alan') {
+				teacherStore.toggleHidden(a.id);
+			} else if (a.kind === 'gorsel' && a.linkUrl) {
+				window.open(a.linkUrl, '_blank', 'noopener,noreferrer');
+			}
+			// 'metin' → tıklamanın hiçbir etkisi yok (düz, her zaman görünür yazı)
+		}
 		moved = false;
 	}
 	function handleItemClick(a: HiddenAnswer) {
@@ -128,7 +140,7 @@
 		}
 	}
 
-	// --- Ayar paneli (punto/renk/sil) ---
+	// --- Ayar paneli (punto/renk/link/sil) ---
 	let settingsFor = $state<string | null>(null);
 	function settingsStyle(a: HiddenAnswer) {
 		const top = a.rect.origin.y * scale - 44;
@@ -282,6 +294,129 @@
 					</button>
 				{/if}
 			</div>
+		{/if}
+	{/each}
+
+	<!-- 'metin' ve 'gorsel' — gizli DEĞİL, teacherMode'dan bağımsız her zaman
+	     herkese görünür. Düzenleme tutamaçları (taşı/⚙/sil) yalnızca admin +
+	     Öğretmen Modu açıkken görünür; diğer herkes (öğretmen/misafir) sadece
+	     içeriği görür ve (gorsel için) linke tıklayabilir. -->
+	{#each alwaysVisibleAnswers as a (a.id)}
+		{#if a.kind === 'metin'}
+			{#if teacherStore.teacherMode && teacherStore.canManage}
+				<div
+					style={styleFor(a.rect) + 'z-index:20;'}
+					onpointerdown={(e) => startItemDrag(e, a)}
+					onpointermove={(e) => onItemDrag(e, a)}
+					onpointerup={(e) => endItemDrag(e, a)}
+					role="button"
+					tabindex="0"
+					title="Sürükleyerek taşı"
+					class="group flex cursor-move items-center"
+				>
+					<span
+						class="pointer-events-none select-none"
+						style="font-size:{(a.fontSize ?? 20) * scale}px; color:{a.color ?? '#111827'};"
+					>
+						{a.text}
+					</span>
+					<button
+						type="button"
+						title="Sil"
+						onpointerdown={(e) => e.stopPropagation()}
+						onclick={(e) => {
+							e.stopPropagation();
+							teacherStore.remove(a.id);
+						}}
+						class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow opacity-0 group-hover:opacity-100 hover:bg-red-700"
+					>
+						✕
+					</button>
+					<button
+						type="button"
+						title="Ayarlar (punto/renk) — yalnızca yönetici"
+						onpointerdown={(e) => e.stopPropagation()}
+						onclick={(e) => {
+							e.stopPropagation();
+							settingsFor = settingsFor === a.id ? null : a.id;
+						}}
+						style="position:absolute; left:100%; top:0; margin-left:4px; z-index:25; pointer-events:auto;"
+						class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] text-white opacity-0 shadow group-hover:opacity-100 hover:bg-slate-700"
+					>
+						⚙
+					</button>
+				</div>
+			{:else}
+				<div style={styleFor(a.rect) + 'z-index:20; pointer-events:none;'} class="flex items-center">
+					<span
+						class="select-none"
+						style="font-size:{(a.fontSize ?? 20) * scale}px; color:{a.color ?? '#111827'};"
+					>
+						{a.text}
+					</span>
+				</div>
+			{/if}
+		{:else if a.kind === 'gorsel'}
+			{#if teacherStore.teacherMode && teacherStore.canManage}
+				<div
+					style={styleFor(a.rect) + 'z-index:20;'}
+					onpointerdown={(e) => startItemDrag(e, a)}
+					onpointermove={(e) => onItemDrag(e, a)}
+					onpointerup={(e) => endItemDrag(e, a)}
+					role="button"
+					tabindex="0"
+					title="Sürükleyerek taşı, tıklayarak linki test et"
+					class="group cursor-move"
+				>
+					<img
+						src={a.imageUrl}
+						alt=""
+						draggable="false"
+						class="pointer-events-none h-full w-full select-none object-contain"
+					/>
+					<button
+						type="button"
+						title="Sil"
+						onpointerdown={(e) => e.stopPropagation()}
+						onclick={(e) => {
+							e.stopPropagation();
+							teacherStore.remove(a.id);
+						}}
+						class="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] text-white shadow opacity-0 group-hover:opacity-100 hover:bg-red-700"
+					>
+						✕
+					</button>
+					<button
+						type="button"
+						title="Ayarlar (link) — yalnızca yönetici"
+						onpointerdown={(e) => e.stopPropagation()}
+						onclick={(e) => {
+							e.stopPropagation();
+							settingsFor = settingsFor === a.id ? null : a.id;
+						}}
+						style="position:absolute; left:100%; top:0; margin-left:4px; z-index:25; pointer-events:auto;"
+						class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-800 text-[11px] text-white opacity-0 shadow group-hover:opacity-100 hover:bg-slate-700"
+					>
+						⚙
+					</button>
+				</div>
+			{:else}
+				<div
+					style={styleFor(a.rect) + 'z-index:20;' + (a.linkUrl ? 'cursor:pointer;' : 'pointer-events:none;')}
+					onclick={() => {
+						if (a.linkUrl) window.open(a.linkUrl, '_blank', 'noopener,noreferrer');
+					}}
+					role={a.linkUrl ? 'link' : 'presentation'}
+					tabindex={a.linkUrl ? 0 : -1}
+				>
+					<img
+						src={a.imageUrl}
+						alt=""
+						draggable="false"
+						class="pointer-events-none h-full w-full select-none object-contain"
+					/>
+				</div>
+			{/if}
 		{/if}
 	{/each}
 
