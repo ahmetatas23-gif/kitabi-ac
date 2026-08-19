@@ -92,6 +92,10 @@
 			text: kind === 'gizli-metin' || kind === 'metin' ? text : undefined,
 			fontSize: 20,
 			color: '#111827',
+			// Varsayılan satır aralığı — çok satırlı bir cevap yazılırsa (örn. çizgili
+			// sayfaya yazılan düzeltilmiş paragraf), yönetici bunu daha sonra ⚙ ayarlar
+			// panelinden PDF'deki gerçek çizgi aralığına göre ince ayar yapabilir.
+			lineHeight: 28,
 			// 'gizli-metin'/'gizli-alan' varsayılan gizli başlar; 'metin' hiç gizli
 			// olmayan, her zaman görünür bir türdür.
 			hidden: kind === 'gizli-metin' || kind === 'gizli-alan',
@@ -152,11 +156,16 @@
 		{#if kind === 'gizli-metin' || kind === 'metin'}
 			<label class="mb-3 block text-xs font-semibold text-slate-600">
 				{kind === 'metin' ? 'Metin (herkese her zaman görünür)' : 'Cevap metni (öğrenciden gizli)'}
-				<input
+				<textarea
 					bind:value={text}
+					rows="4"
 					class="mt-1 w-full rounded border border-slate-300 px-2 py-1 text-sm"
-					placeholder={kind === 'metin' ? 'Örn. Not: Sayfa 12 ile bağlantılıdır.' : 'Örn. 472'}
-				/>
+					placeholder={kind === 'metin' ? 'Örn. Not: Sayfa 12 ile bağlantılıdır.' : 'Örn. 472\n(Enter ile satır sonu — çizgili sayfada satırları istediğin yerden bölebilirsin)'}
+				></textarea>
+				<span class="mt-1 block text-[10px] font-normal text-slate-400"
+					>Birden fazla satır için Enter'a bas — her satır ekledikten sonra ⚙ ayarlardan
+					"satır aralığı"nı sayfadaki çizgilere göre ayarlayabilirsin.</span
+				>
 			</label>
 		{:else if kind === 'gizli-alan'}
 			<p class="mb-3 text-xs text-slate-500">

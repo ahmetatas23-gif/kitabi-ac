@@ -32,6 +32,11 @@ export interface HiddenAnswer {
 	linkUrl?: string; // yalnızca 'gorsel' için, opsiyonel (tıklayınca açılır)
 	fontSize?: number; // 'gizli-metin' ve 'metin' için
 	color?: string; // 'gizli-metin' ve 'metin' için
+	/** Satır aralığı (px, 1x ölçekte) — 'gizli-metin' ve 'metin' için. Çok satırlı
+	 *  cevaplarda (örn. çizgili bir sayfaya yazılan düzeltilmiş paragraf), metnin
+	 *  PDF sayfasındaki arka plan çizgileriyle hizalanabilmesi için ayrı ayrı
+	 *  ayarlanabilir olması gerekiyor — punto ile karıştırılmamalı, ikisi bağımsız. */
+	lineHeight?: number;
 	/** true: öğrenciden gizli. false: açık/görünür. Silinmez, sadece bu değişir.
 	 *  NOT: 'gorsel' ve 'metin' için bu HER ZAMAN false'tur ve hiç değişmez —
 	 *  bu iki tür zaten "gizli cevap" değil, her zaman görünür içeriktir. */

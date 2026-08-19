@@ -39,6 +39,7 @@ interface HiddenAnswerRow {
 	link_url: string | null;
 	font_size: number | null;
 	color: string | null;
+	line_height: number | null;
 	default_hidden: boolean;
 	created_at: string;
 }
@@ -58,6 +59,7 @@ function rowToAnswer(r: HiddenAnswerRow): HiddenAnswer {
 		linkUrl: r.link_url ?? undefined,
 		fontSize: r.font_size ?? undefined,
 		color: r.color ?? undefined,
+		lineHeight: r.line_height ?? undefined,
 		hidden: r.default_hidden,
 		createdAt: r.created_at
 	};
@@ -78,6 +80,7 @@ function answerToRow(a: HiddenAnswer) {
 		link_url: a.linkUrl ?? null,
 		font_size: a.fontSize ?? null,
 		color: a.color ?? null,
+		line_height: a.lineHeight ?? null,
 		default_hidden: a.hidden
 	};
 }

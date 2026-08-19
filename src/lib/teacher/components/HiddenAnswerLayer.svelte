@@ -30,6 +30,16 @@
 		return `position:absolute; left:${rect.origin.x * scale}px; top:${rect.origin.y * scale}px; width:${rect.size.width * scale}px; height:${rect.size.height * scale}px; pointer-events:auto; touch-action:none;`;
 	}
 
+	// 'gizli-metin'/'metin' için AYRI stil: yükseklik rect'ten SABİT alınmaz, içeriğe göre
+	// otomatik büyür/küçülür (height:auto) — böylece admin çok satırlı bir cevap yazdığında
+	// (örn. çizgili sayfaya yazılan düzeltilmiş paragraf) metin kutunun dışına taşıp
+	// kesilmez, tıklama/sürükleme alanı da gerçek içerikle birlikte büyür. Genişlik yine de
+	// çizilen kutudan (rect.size.width) gelir — admin çizerken ne kadar genişlik istediğini
+	// belirler, metin bu genişliğe göre sarmalanır (pre-wrap).
+	function styleForText(rect: Rect) {
+		return `position:absolute; left:${rect.origin.x * scale}px; top:${rect.origin.y * scale}px; width:${rect.size.width * scale}px; pointer-events:auto; touch-action:none;`;
+	}
+
 	let pageEl = $state<HTMLDivElement | null>(null);
 	function pagePoint(clientX: number, clientY: number) {
 		const box = pageEl?.getBoundingClientRect();
@@ -219,21 +229,19 @@
 			{/if}
 		{:else if a.kind === 'gizli-metin'}
 			<div
-				style={styleFor(a.rect) + 'z-index:20;'}
+				style={styleForText(a.rect) + 'z-index:20;'}
 				onpointerdown={(e) => startItemDrag(e, a)}
 				onpointermove={(e) => onItemDrag(e, a)}
 				onpointerup={(e) => endItemDrag(e, a)}
 				onclick={() => handleItemClick(a)}
 				role="button"
 				tabindex="0"
-				class="group flex items-center {teacherStore.teacherMode ? 'cursor-move' : ''}"
+				class="group flex items-start {teacherStore.teacherMode ? 'cursor-move' : ''}"
 			>
 				<span
-					class="pointer-events-none select-none"
-					style="font-size:{(a.fontSize ?? 20) * scale}px; color:{a.color ?? '#111827'};"
-				>
-					{a.text}
-				</span>
+					class="pointer-events-none select-none whitespace-pre-wrap"
+					style="font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
+				>{a.text}</span>
 				{#if teacherStore.canManage}
 					<button
 						type="button"
@@ -305,21 +313,19 @@
 		{#if a.kind === 'metin'}
 			{#if teacherStore.teacherMode && teacherStore.canManage}
 				<div
-					style={styleFor(a.rect) + 'z-index:20;'}
+					style={styleForText(a.rect) + 'z-index:20;'}
 					onpointerdown={(e) => startItemDrag(e, a)}
 					onpointermove={(e) => onItemDrag(e, a)}
 					onpointerup={(e) => endItemDrag(e, a)}
 					role="button"
 					tabindex="0"
 					title="Sürükleyerek taşı"
-					class="group flex cursor-move items-center"
+					class="group flex cursor-move items-start"
 				>
 					<span
-						class="pointer-events-none select-none"
-						style="font-size:{(a.fontSize ?? 20) * scale}px; color:{a.color ?? '#111827'};"
-					>
-						{a.text}
-					</span>
+						class="pointer-events-none select-none whitespace-pre-wrap"
+						style="font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
+					>{a.text}</span>
 					<button
 						type="button"
 						title="Sil"
@@ -347,13 +353,11 @@
 					</button>
 				</div>
 			{:else}
-				<div style={styleFor(a.rect) + 'z-index:20; pointer-events:none;'} class="flex items-center">
+				<div style={styleForText(a.rect) + 'z-index:20; pointer-events:none;'} class="flex items-start">
 					<span
-						class="select-none"
-						style="font-size:{(a.fontSize ?? 20) * scale}px; color:{a.color ?? '#111827'};"
-					>
-						{a.text}
-					</span>
+						class="select-none whitespace-pre-wrap"
+						style="font-size:{(a.fontSize ?? 20) * scale}px; line-height:{(a.lineHeight ?? 28) * scale}px; color:{a.color ?? '#111827'};"
+					>{a.text}</span>
 				</div>
 			{/if}
 		{:else if a.kind === 'gorsel'}
